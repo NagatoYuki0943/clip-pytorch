@@ -140,21 +140,21 @@ def tokenize(_tokenizer, texts: Union[str, List[str]], context_length: int = 77,
     if isinstance(texts, str):
         texts = [texts]
 
-    sot_token = _tokenizer.encoder["<|startoftext|>"]
-    eot_token = _tokenizer.encoder["<|endoftext|>"]
-    all_tokens = [[sot_token] + _tokenizer.encode(text) + [eot_token] for text in texts]
+    sot_token = _tokenizer.encoder["<|startoftext|>"]   # get id 49407
+    eot_token = _tokenizer.encoder["<|endoftext|>"]     # get id 49406
+    all_tokens = [[sot_token] + _tokenizer.encode(text) + [eot_token] for text in texts] # 逐个遍历文本转换为id,并在开始和结束添加特殊token
     if packaging.version.parse(torch.__version__) < packaging.version.parse("1.8.0"):
         result = torch.zeros(len(all_tokens), context_length, dtype=torch.long)
     else:
-        result = torch.zeros(len(all_tokens), context_length, dtype=torch.int)
+        result = torch.zeros(len(all_tokens), context_length, dtype=torch.int)  # 生成指定batch和长度的0数据
 
-    for i, tokens in enumerate(all_tokens):
+    for i, tokens in enumerate(all_tokens): # 遍历每个token放入result中
         if len(tokens) > context_length:
             if truncate:
-                tokens = tokens[:context_length]
-                tokens[-1] = eot_token
+                tokens = tokens[:context_length]    # 长度过长截断token
+                tokens[-1] = eot_token              # 将最后的token改为结束token
             else:
                 raise RuntimeError(f"Input {texts[i]} is too long for context length {context_length}")
-        result[i, :len(tokens)] = torch.tensor(tokens)
+        result[i, :len(tokens)] = torch.tensor(tokens) # 将token放入results中
 
     return result.long()

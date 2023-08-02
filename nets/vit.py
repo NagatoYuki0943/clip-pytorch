@@ -88,20 +88,37 @@ class VisionTransformer(nn.Module):
         self.proj = nn.Parameter(scale * torch.randn(width, output_dim))
 
     def forward(self, x: torch.Tensor):
-        x = self.conv1(x)  # shape = [*, width, grid, grid]
-        x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
-        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
-        x = x + self.positional_embedding.to(x.dtype)
+        x = self.conv1(x)                           # shape = [*, width, grid, grid] [B, 3, 224, 224] -> [B, 768, 7, 7]
+        x = x.reshape(x.shape[0], x.shape[1], -1)   # shape = [*, width, grid ** 2]  [B, 768, 7, 7] -> [B, 768, 49]
+        x = x.permute(0, 2, 1)                      # shape = [*, grid ** 2, width]  [B, 768, 49] -> [B, 49, 768]
+        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width] [B, 49, 768] -> [B, 50, 768]
+        x = x + self.positional_embedding.to(x.dtype) # [B, 50, 768] + [1, 50, 768] = [B, 50, 768]
         x = self.ln_pre(x)
 
-        x = x.permute(1, 0, 2)  # NLD -> LND
-        x = self.transformer(x)
-        x = x.permute(1, 0, 2)  # LND -> NLD
+        x = x.permute(1, 0, 2)  # NLD -> LND    [B, 50, 768] -> [50, B, 768]
+        x = self.transformer(x) # LND -> LND    [50, B, 768] -> [50, B, 768]
+        x = x.permute(1, 0, 2)  # LND -> NLD    [50, B, 768] -> [B, 50, 768]
 
-        x = self.ln_post(x[:, 0, :])
+        # 使用分类层进行后续计算
+        x = self.ln_post(x[:, 0, :])          # [B, 50, 768] get [B, 768]
 
         if self.proj is not None:
-            x = x @ self.proj
+            x = x @ self.proj                 # [B, 768] @ [768, 512] = [B, 512]
 
         return x
+
+if __name__ == "__main__":
+    model = VisionTransformer(
+        input_resolution=224,
+        patch_size=32,
+        width=768,
+        layers=12,
+        heads=12,
+        output_dim=512,
+    )
+    x = torch.ones(1, 3, 224, 224)
+
+    model.eval()
+    with torch.inference_mode():
+        y = model(x)
+    print(y.size()) # [1, 512]

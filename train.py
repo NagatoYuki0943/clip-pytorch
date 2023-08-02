@@ -48,7 +48,7 @@ if __name__ == "__main__":
     #
     #   如果训练过程中存在中断训练的操作，可以将model_path设置成logs文件夹下的权值文件，将已经训练了一部分的权值再次载入。
     #   同时修改下方的 冻结阶段 或者 解冻阶段 的参数，来保证模型epoch的连续性。
-    #   
+    #
     #   当model_path = ''的时候不加载整个模型的权值。
     #
     #   此处使用的是整个模型的权重，因此是在train.py进行加载的。
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     batch_size      = 128
     Init_Epoch      = 0
     Epoch           = 100
-    
+
     #------------------------------------------------------------------#
     #   其它训练参数：学习率、优化器、学习率下降有关
     #------------------------------------------------------------------#
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     #                   在IO为瓶颈的时候再开启多线程，即GPU运算速度远大于读取图片的速度。
     #------------------------------------------------------------------#
     num_workers         = 4
-    
+
     #------------------------------------------------------#
     #   datasets_train_json_path   训练图片路径和标签
     #   datasets_val_json_path    验证图片路径和标签
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     datasets_train_json_path    = "datasets/en_train.json"
     datasets_val_json_path      = "datasets/en_val.json"
     datasets_random             = True
-    
+
     #------------------------------------------------------#
     #   设置用到的显卡
     #------------------------------------------------------#
@@ -165,7 +165,7 @@ if __name__ == "__main__":
         device          = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         local_rank      = 0
         rank            = 0
-    
+
     config  = get_configs(phi)
     model   = CLIP(**config)
     if model_path != '':
@@ -174,7 +174,7 @@ if __name__ == "__main__":
         #------------------------------------------------------#
         if local_rank == 0:
             print('Load weights {}.'.format(model_path))
-        
+
         #------------------------------------------------------#
         #   根据预训练权重的Key和模型的Key进行加载
         #------------------------------------------------------#
@@ -196,14 +196,14 @@ if __name__ == "__main__":
             print("\nSuccessful Load Key:", str(load_key)[:500], "……\nSuccessful Load Key Num:", len(load_key))
             print("\nFail To Load Key:", str(no_load_key)[:500], "……\nFail To Load Key num:", len(no_load_key))
             print("\n\033[1;33;44m温馨提示，head部分没有载入是正常现象，Backbone部分没有载入是错误的。\033[0m")
-    
+
     if local_rank == 0:
         time_str        = datetime.datetime.strftime(datetime.datetime.now(),'%Y_%m_%d_%H_%M_%S')
         log_dir         = os.path.join(save_dir, "loss_" + str(time_str))
         loss_history    = LossHistory(log_dir, model, None)
     else:
         loss_history = None
-        
+
     if fp16:
         #------------------------------------------------------------------#
         #   torch 1.2不支持amp，建议使用torch 1.7.1及以上正确使用fp16
@@ -226,10 +226,10 @@ if __name__ == "__main__":
             model_train = torch.nn.DataParallel(model)
             cudnn.benchmark = True
             model_train = model_train.cuda()
-        
+
     train_lines = json.load(open(datasets_train_json_path, mode = 'r', encoding = 'utf-8'))
     val_lines   = json.load(open(datasets_val_json_path, mode = 'r', encoding = 'utf-8'))
-    
+
     num_train   = len(train_lines)
     num_val     = len(val_lines)
 
@@ -240,7 +240,7 @@ if __name__ == "__main__":
             Init_lr = Init_lr, Min_lr = Min_lr, optimizer_type = optimizer_type, momentum = momentum, lr_decay_type = lr_decay_type, \
             save_period = save_period, save_dir = save_dir, num_workers = num_workers, num_train = num_train, num_val = num_val
         )
-        
+
     if True:
         #-------------------------------------------------------------------#
         #   判断当前batch_size，自适应调整学习率
@@ -263,13 +263,13 @@ if __name__ == "__main__":
         #   获得学习率下降的公式
         #---------------------------------------#
         lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, Epoch)
-        
+
         #---------------------------------------#
         #   判断每一个世代的长度
         #---------------------------------------#
         epoch_step      = num_train // batch_size
         epoch_step_val  = num_val // batch_size
-        
+
         if epoch_step == 0 or epoch_step_val == 0:
             raise ValueError("数据集过小，无法继续进行训练，请扩充数据集。")
 
@@ -278,7 +278,7 @@ if __name__ == "__main__":
         #---------------------------------------#
         train_dataset   = ClipDataset([config['input_resolution'], config['input_resolution']], train_lines, datasets_path, random = datasets_random)
         val_dataset     = ClipDataset([config['input_resolution'], config['input_resolution']], val_lines, datasets_path, random = False)
-        
+
         if distributed:
             train_sampler   = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True,)
             val_sampler     = torch.utils.data.distributed.DistributedSampler(val_dataset, shuffle=False,)
@@ -309,9 +309,9 @@ if __name__ == "__main__":
         for epoch in range(Init_Epoch, Epoch):
             if distributed:
                 train_sampler.set_epoch(epoch)
-                
+
             set_optimizer_lr(optimizer, lr_scheduler_func, epoch)
-            
+
             fit_one_epoch(model_train, model, loss_history, eval_callback, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, Cuda, \
                           fp16, scaler, save_period, save_dir, local_rank)
 

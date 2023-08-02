@@ -35,15 +35,22 @@ def fit_one_epoch(model_train, model, loss_history, eval_callback, optimizer, ep
             # 这里不使用logits_per_text是因为dp模式的划分有问题，所以使用logits_per_image出来的后转置。
             logits_per_image, _                 = model_train(images, texts)
             logits_per_text                     = logits_per_image.t()
+            # [0, 1, 2...len(images)]
             labels                              = torch.arange(len(logits_per_image)).long().to(images.device)
-
+            # logit形状为这样,1代表正样本,0代表负样本,label指的是对于每一行中哪个id为正类别,也可以用torch.eye(len(images))创造对角线矩阵计算loss,结果相同
+            # [
+            #   [1, 0, 0, 0],
+            #   [0, 1, 0, 0],
+            #   [0, 0, 1, 0],
+            #   [0, 0, 0, 1]
+            # ]
             loss_logits_per_image               = nn.CrossEntropyLoss()(logits_per_image, labels)
             loss_logits_per_text                = nn.CrossEntropyLoss()(logits_per_text, labels)
             loss                                = loss_logits_per_image + loss_logits_per_text
-            
+
             loss.backward()
             optimizer.step()
-            
+
         else:
             from torch.cuda.amp import autocast
             with autocast():
@@ -60,14 +67,14 @@ def fit_one_epoch(model_train, model, loss_history, eval_callback, optimizer, ep
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
-            
+
         total_loss += loss.item()
 
         with torch.no_grad():
             de_parallel(model_train).logit_scale.clamp_(0, math.log(100))
 
         if local_rank == 0:
-            pbar.set_postfix(**{'total_loss'            : total_loss / (iteration + 1), 
+            pbar.set_postfix(**{'total_loss'            : total_loss / (iteration + 1),
                                 'lr'                    : get_lr(optimizer)})
             pbar.update(1)
 
@@ -86,21 +93,21 @@ def fit_one_epoch(model_train, model, loss_history, eval_callback, optimizer, ep
                 images  = images.cuda(local_rank)
 
             optimizer.zero_grad()
-    
+
             logits_per_image, _                 = model_train(images, texts)
             logits_per_text                     = logits_per_image.t()
             labels                              = torch.arange(len(logits_per_image)).long().to(images.device)
             loss_logits_per_image               = nn.CrossEntropyLoss()(logits_per_image, labels)
             loss_logits_per_text                = nn.CrossEntropyLoss()(logits_per_text, labels)
             loss                                = loss_logits_per_image + loss_logits_per_text
-            
+
             val_total_loss += loss.item()
 
         if local_rank == 0:
-            pbar.set_postfix(**{'val_loss'              : val_total_loss / (iteration + 1), 
+            pbar.set_postfix(**{'val_loss'              : val_total_loss / (iteration + 1),
                                 'lr'                    : get_lr(optimizer)})
             pbar.update(1)
-            
+
     if local_rank == 0:
         pbar.close()
         print('Finish Validation')
@@ -108,15 +115,15 @@ def fit_one_epoch(model_train, model, loss_history, eval_callback, optimizer, ep
         eval_callback.on_epoch_end(epoch + 1, model_train)
         print('Epoch:'+ str(epoch + 1) + '/' + str(Epoch))
         print('Total Loss: %.3f || Val Loss: %.3f ' % (total_loss / epoch_step, val_total_loss / epoch_step_val))
-        
+
         #-----------------------------------------------#
         #   保存权值
         #-----------------------------------------------#
         if (epoch + 1) % save_period == 0 or epoch + 1 == Epoch:
             torch.save(deepcopy(model).half().state_dict(), os.path.join(save_dir, 'ep%03d-loss%.3f-val_loss%.3f.pth' % (epoch + 1, total_loss / epoch_step, val_total_loss / epoch_step_val)))
-            
+
         if len(loss_history.val_loss) <= 1 or (val_total_loss / epoch_step_val) <= min(loss_history.val_loss):
             print('Save best model to best_epoch_weights.pth')
             torch.save(deepcopy(model).half().state_dict(), os.path.join(save_dir, "best_epoch_weights.pth"))
-            
+
         torch.save(deepcopy(model).half().state_dict(), os.path.join(save_dir, "last_epoch_weights.pth"))

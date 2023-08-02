@@ -37,10 +37,10 @@ def letterbox_image(image, size, letterbox_image):
 #---------------------------------------------------------#
 def cvtColor(image):
     if len(np.shape(image)) == 3 and np.shape(image)[2] == 3:
-        return image 
+        return image
     else:
         image = image.convert('RGB')
-        return image 
+        return image
 
 #----------------------------------------#
 #   预处理训练图片
@@ -63,7 +63,7 @@ def pre_caption(caption, max_words):
         ' ',
         caption,
     )
-    caption = caption.rstrip('\n') 
+    caption = caption.rstrip('\n')
     caption = caption.strip(' ')
 
     #truncate caption
@@ -75,7 +75,7 @@ def pre_caption(caption, max_words):
 
 def get_configs(phi):
     if phi == "openai/VIT-B-32":
-        config = dict( 
+        config = dict(
             bert_type          = "openai",
             embed_dim          = 512,
             # vision
@@ -91,7 +91,7 @@ def get_configs(phi):
             huggingface_model_name = None
         )
     elif phi == "openai/VIT-B-16":
-        config = dict( 
+        config = dict(
             bert_type          = "openai",
             embed_dim          = 512,
             # vision
@@ -107,7 +107,7 @@ def get_configs(phi):
             huggingface_model_name = None
         )
     elif phi == "self-cn/VIT-B-32":
-        config = dict( 
+        config = dict(
             bert_type          = "huggingface",
             embed_dim          = 512,
             # vision
@@ -132,7 +132,7 @@ def get_configs(phi):
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
-    
+
 def get_lr_scheduler(lr_decay_type, lr, min_lr, total_iters, warmup_iters_ratio = 0.1, warmup_lr_ratio = 0.1, no_aug_iter_ratio = 0.3, step_num = 10):
     def yolox_warm_cos_lr(lr, min_lr, total_iters, warmup_total_iters, warmup_lr_start, no_aug_iter, iters):
         if iters <= warmup_total_iters:
@@ -194,7 +194,7 @@ def show_config(**kwargs):
 #         from urllib import urlretrieve
 #     except ImportError:
 #         from urllib.request import urlretrieve
-        
+
 #     def download_zip(url, model_dir='./pretrained'):
 #         if not os.path.exists(model_dir):
 #             os.makedirs(model_dir)
@@ -202,7 +202,7 @@ def show_config(**kwargs):
 #         cached_file = os.path.join(model_dir, filename)
 #         if not os.path.exists(cached_file):
 #             os.makedirs(cached_file)
-            
+
 #             zip_file = os.path.join(model_dir, filename+'.zip')
 #             sys.stderr.write('Downloading: "{}" to {}\n'.format(url, zip_file))
 #             urlretrieve(url, zip_file)
@@ -210,9 +210,9 @@ def show_config(**kwargs):
 #             zip_ref.extractall(cached_file)
 #             zip_ref.close()
 #             os.remove(zip_file)
-            
+
 #     if not os.path.exists(model_dir):
 #         os.makedirs(model_dir)
-        
+
 #     download_zip('https://github.com/bubbliiiing/clip-pytorch/releases/download/v1.0/chinese_wwm_ext_pytorch.zip', model_dir)
 #     load_state_dict_from_url("https://github.com/bubbliiiing/clip-pytorch/releases/download/v1.0/VIT-32.pth", model_dir)

@@ -65,7 +65,7 @@ class CLIP(object):
         if self.cuda:
             # self.net = nn.DataParallel(self.net)
             self.net = self.net.cuda()
-            
+
     #---------------------------------------------------#
     #   检测图片
     #---------------------------------------------------#
@@ -92,11 +92,11 @@ class CLIP(object):
             #   将图像输入网络当中进行预测！
             #---------------------------------------------------------#
             logits_per_image, logits_per_text = self.net(images, texts)
-            
+
             probs = logits_per_image.softmax(dim=-1).cpu().numpy()
-        
+
         return probs
-    
+
     #---------------------------------------------------#
     #   检测图片
     #---------------------------------------------------#
@@ -109,10 +109,10 @@ class CLIP(object):
                 images_feature = self.net.encode_image(images)
             else:
                 images_feature = None
-                
+
             if texts is not None:
                 texts_feature = self.net.encode_text(texts)
             else:
                 texts_feature = None
-        
+
         return images_feature, texts_feature
